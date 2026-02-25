@@ -1,0 +1,75 @@
+name: Build & Publish
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0+$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $VERSION"
+
+      - name: Set up JDK 21 (Zulu)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build shadow JAR
+        run: ./gradlew shadowJar -PpluginVersion=${{ steps.version.outputs.version }}
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoVPN-${{ steps.version.outputs.version }}
+          path: build/libs/NoVPN-Velocity-*.jar
+          if-no-files-found: error
+
+      # Only publish when a version tag is pushed (e.g. v1.2.3)
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/libs/NoVPN-Velocity-*.jar
+          generate_release_notes: true
+
+      - name: Publish to Modrinth
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: RubixDev/modrinth-upload@v1
+        with:
+          token: ${{ secrets.MODRINTH_TOKEN }}
+          project_id: Qn6G3lhH
+          version_number: ${{ steps.version.outputs.version }}
+          version_type: release
+          # Adjust these loaders/game versions as needed
+          loaders: |
+            velocity
+          game_versions: |
+            1.21.4
+          changelog: ${{ github.event.release.body }}
+          files: build/libs/NoVPN-Velocity-*.jar
