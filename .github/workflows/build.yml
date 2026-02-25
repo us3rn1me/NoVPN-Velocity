@@ -68,6 +68,7 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project_id: Qn6G3lhH
           version: ${{ steps.version.outputs.version }}
+          name: NoVPN v${{ steps.version.outputs.version }}
           release_type: release
           loaders: |
             velocity
