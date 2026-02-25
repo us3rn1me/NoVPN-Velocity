@@ -1,0 +1,22 @@
+name: NoVPN
+version: ${version}
+main: com.us3rn1me.noVPN.bukkit.BukkitNoVPN
+api-version: '1.13'
+folia-supported: true
+description: Simple, free and open-source Anti-VPN plugin for Bukkit/Spigot/Paper/Folia.
+website: https://modrinth.com/project/Qn6G3lhH
+author: us3rn1me
+
+commands:
+  novpn:
+    description: NoVPN admin command.
+    usage: /novpn <reload|check <ip>|info>
+    permission: novpn.admin
+
+permissions:
+  novpn.bypass:
+    description: Bypass the VPN/proxy check on login.
+    default: false
+  novpn.admin:
+    description: Access to /novpn admin command.
+    default: op

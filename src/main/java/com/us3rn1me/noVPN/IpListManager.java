@@ -1,12 +1,9 @@
 package com.us3rn1me.noVPN;
 
-import org.slf4j.Logger;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
-import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -17,6 +14,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 /**
@@ -62,7 +60,6 @@ public class IpListManager {
      * @param config the plugin configuration
      */
     public void start(Config config) {
-        // Run sync for the first load so the plugin is ready before players connect.
         refresh(config);
         scheduleRefresh(config);
     }
@@ -93,18 +90,14 @@ public class IpListManager {
      * @return {@code true} if the IP is flagged
      */
     public boolean isBlocked(String rawIp) {
-        String ip = rawIp.contains(":") && !rawIp.startsWith("[")
-                ? rawIp // IPv6 — pass through (we only block IPv4)
-                : rawIp;
-
         Snapshot snap = snapshot.get();
 
-        if (snap.ips().contains(ip))
+        if (snap.ips().contains(rawIp))
             return true;
 
         InetAddress addr;
         try {
-            addr = InetAddress.getByName(ip);
+            addr = InetAddress.getByName(rawIp);
         } catch (UnknownHostException e) {
             return false;
         }
@@ -131,7 +124,7 @@ public class IpListManager {
 
     /** Downloads all configured lists and atomically replaces the snapshot. */
     public void refresh(Config config) {
-        logger.info("Refreshing IP lists ({} sources)...", config.getLists().size());
+        logger.info("NoVPN: Refreshing IP lists (" + config.getLists().size() + " sources)...");
 
         Set<String> ips = new HashSet<>();
         List<InetAddressRange> cidrs = new ArrayList<>();
@@ -142,14 +135,14 @@ public class IpListManager {
                 fetchList(url, config.getConnectTimeoutSeconds() * 1000, ips, cidrs);
             } catch (Exception e) {
                 failedSources++;
-                logger.debug("Failed to fetch {}: {}", url, e.getMessage());
+                logger.fine("NoVPN: Failed to fetch " + url + ": " + e.getMessage());
             }
         }
 
         snapshot.set(new Snapshot(Set.copyOf(ips), List.copyOf(cidrs)));
 
-        logger.info("IP lists refreshed — {} IPs, {} CIDR ranges loaded ({} source(s) failed).",
-                ips.size(), cidrs.size(), failedSources);
+        logger.info("NoVPN: Refreshed — " + ips.size() + " IPs, " + cidrs.size()
+                + " CIDR ranges loaded (" + failedSources + " source(s) failed).");
     }
 
     private void scheduleRefresh(Config config) {
@@ -162,7 +155,7 @@ public class IpListManager {
                     try {
                         refresh(config);
                     } catch (Exception e) {
-                        logger.error("Scheduled IP list refresh failed.", e);
+                        logger.severe("NoVPN: Scheduled IP list refresh failed: " + e.getMessage());
                     }
                 },
                 interval, interval, TimeUnit.MINUTES);
@@ -171,12 +164,12 @@ public class IpListManager {
     private void fetchList(String rawUrl, int timeoutMs, Set<String> ips, List<InetAddressRange> cidrs)
             throws Exception {
 
-        URL url = new java.net.URI(rawUrl).toURL();
+        java.net.URL url = new java.net.URI(rawUrl).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setConnectTimeout(timeoutMs);
         conn.setReadTimeout(timeoutMs);
         conn.setRequestProperty("User-Agent",
-                "NoVPN-Velocity/" + BuildConstants.VERSION + " (github.com/us3rn1me/NoVPN-Velocity)");
+                "NoVPN/" + BuildConstants.VERSION + " (github.com/us3rn1me/NoVPN)");
         conn.setInstanceFollowRedirects(true);
 
         int status = conn.getResponseCode();
@@ -186,7 +179,6 @@ public class IpListManager {
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(conn.getInputStream()))) {
-
             String line;
             while ((line = reader.readLine()) != null) {
                 parseLine(line.trim(), ips, cidrs);
@@ -212,9 +204,8 @@ public class IpListManager {
         // CIDR notation
         if (CIDR_PATTERN.matcher(line).matches()) {
             InetAddressRange range = InetAddressRange.parse(line);
-            if (range != null) {
+            if (range != null)
                 cidrs.add(range);
-            }
             return;
         }
 

@@ -15,18 +15,36 @@ repositories {
         name = 'papermc-repo'
         url = 'https://repo.papermc.io/repository/maven-public/'
     }
+    maven {
+        name = 'spigot-repo'
+        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+    }
+    maven {
+        name = 'tcoded-releases'
+        url = 'https://repo.tcoded.com/releases'
+    }
 }
 
 dependencies {
+    // Velocity
     compileOnly 'com.velocitypowered:velocity-api:3.4.0-SNAPSHOT'
     annotationProcessor 'com.velocitypowered:velocity-api:3.4.0-SNAPSHOT'
+
+    // Bukkit / Spigot — compile against 1.8.8 to keep full 1.7-1.21.x compatibility
+    compileOnly 'org.spigotmc:spigot-api:1.8.8-R0.1-SNAPSHOT'
+
+    // Shaded
     implementation 'com.electronwill.night-config:toml:3.6.7'
+    implementation 'com.tcoded:FoliaLib:0.5.1'
+    implementation 'com.github.cryptomorin:XSeries:13.0.0'
 }
 
 tasks {
     shadowJar {
         archiveClassifier.set('')
         relocate 'com.electronwill.nightconfig', 'com.us3rn1me.noVPN.libs.nightconfig'
+        relocate 'com.tcoded.folialib',           'com.us3rn1me.noVPN.libs.folialib'
+        relocate 'com.cryptomorin.xseries',       'com.us3rn1me.noVPN.libs.xseries'
     }
 
     build {

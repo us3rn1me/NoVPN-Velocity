@@ -36,7 +36,7 @@ public class NoVPN {
         configManager = new ConfigManager(dataDirectory, logger);
         configManager.load();
 
-        ipListManager = new IpListManager(logger);
+        ipListManager = new IpListManager(java.util.logging.Logger.getLogger("NoVPN"));
         ipListManager.start(configManager.get());
 
         server.getEventManager().register(this,
