@@ -67,12 +67,11 @@ jobs:
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project_id: Qn6G3lhH
-          version_number: ${{ steps.version.outputs.version }}
-          version_type: release
-          # Adjust these loaders/game versions as needed
+          version: ${{ steps.version.outputs.version }}
+          release_type: release
           loaders: |
             velocity
           game_versions: |
             1.21.4
           changelog: ${{ github.event.release.body }}
-          files: build/libs/NoVPN-Velocity-*.jar
+          file_path: build/libs/NoVPN-Velocity-${{ steps.version.outputs.version }}.jar
